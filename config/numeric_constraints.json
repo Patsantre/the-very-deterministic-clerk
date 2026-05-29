@@ -1,0 +1,24 @@
+{
+  "numeric_constraints": [
+    {"label": "disc diameter", "key": "disc_diameter_mm", "unit": "mm"},
+    {"label": "bar length", "key": "bar_length_cm", "unit": "cm"},
+    {"label": "cutting width", "key": "cutting_width_cm", "unit": "cm"},
+    {"label": "working width", "key": "working_width_mm", "unit": "mm"},
+    {"label": "tank volume", "key": "tank_volume_l", "unit": "l"},
+    {"label": "diameter", "key": "diameter_mm", "unit": "mm"},
+    {"label": "length", "key": "length_mm", "unit": "mm"},
+    {"label": "pack count", "key": "pack_count", "unit": "pcs"},
+    {"label": "piece count", "key": "piece_count", "unit": "pcs"},
+    {"label": "voltage", "key": "voltage_v", "unit": "v"},
+    {"label": "wattage", "key": "wattage_w", "unit": "w"},
+    {"label": "power", "key": "power_w", "unit": "w"},
+    {"label": "current", "key": "current_a", "unit": "a"},
+    {"label": "luminous flux", "key": "lumen", "unit": "lm"},
+    {"label": "lumen", "key": "lumen", "unit": ""},
+    {"label": "color temperature", "key": "color_temperature_k", "unit": "k"},
+    {"label": "colour temperature", "key": "color_temperature_k", "unit": "k"},
+    {"label": "cable section", "key": "cable_section_mm2", "unit": "mm2"},
+    {"label": "fabric weight", "key": "fabric_weight_gsm", "unit": "gsm"},
+    {"label": "max torque", "key": "max_torque_nm", "unit": "nm"}
+  ]
+}

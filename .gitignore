@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+
+# uv / venv
+.venv/
+.python-version
+
+# Run artefacts
+runs/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/

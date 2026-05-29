@@ -1,0 +1,106 @@
+{
+  "store_aliases": [
+    {
+      "phrase": "west-side vienna",
+      "city": "vienna",
+      "store_id": "store_vienna_meidling",
+      "name_contains": "Meidling"
+    },
+    {
+      "phrase": "west side vienna",
+      "city": "vienna",
+      "store_id": "store_vienna_meidling",
+      "name_contains": "Meidling"
+    },
+    {
+      "phrase": "meidling powertool store",
+      "city": "vienna",
+      "store_id": "store_vienna_meidling",
+      "name_contains": "Meidling"
+    },
+    {
+      "phrase": "central vienna",
+      "city": "vienna",
+      "store_id": "store_vienna_praterstern",
+      "name_contains": "Praterstern"
+    },
+    {
+      "phrase": "east vienna",
+      "city": "vienna",
+      "store_id": "store_vienna_praterstern",
+      "name_contains": "Praterstern"
+    },
+    {
+      "phrase": "central linz",
+      "city": "linz",
+      "store_id": "store_linz_hauptplatz",
+      "name_contains": "Hauptplatz"
+    },
+    {
+      "phrase": "center linz",
+      "city": "linz",
+      "store_id": "store_linz_hauptplatz",
+      "name_contains": "Hauptplatz"
+    },
+    {
+      "phrase": "linz hardware",
+      "city": "linz",
+      "store_id": "store_linz_hauptplatz",
+      "name_contains": "Hauptplatz"
+    },
+    {
+      "phrase": "linz branch",
+      "city": "linz",
+      "store_id": "store_linz_hauptplatz",
+      "name_contains": "Hauptplatz"
+    },
+    {
+      "phrase": "central ljubljana",
+      "city": "ljubljana",
+      "store_id": "store_ljubljana_center",
+      "name_contains": "Center"
+    },
+    {
+      "phrase": "center ljubljana",
+      "city": "ljubljana",
+      "store_id": "store_ljubljana_center",
+      "name_contains": "Center"
+    },
+    {
+      "phrase": "ljubljana hardware",
+      "city": "ljubljana",
+      "store_id": "store_ljubljana_center",
+      "name_contains": "Center"
+    },
+    {
+      "phrase": "ljubljana branch",
+      "city": "ljubljana",
+      "store_id": "store_ljubljana_center",
+      "name_contains": "Center"
+    },
+    {
+      "phrase": "veveri",
+      "city": "brno",
+      "store_id": "store_brno_veveri",
+      "name_contains": "Veveri"
+    },
+    {
+      "phrase": "north graz",
+      "city": "graz",
+      "store_id": "store_graz_lend",
+      "name_contains": "Lend"
+    },
+    {
+      "phrase": "lend district",
+      "city": "graz",
+      "store_id": "store_graz_lend",
+      "name_contains": "Lend"
+    },
+    {
+      "phrase": "central graz",
+      "city": "graz",
+      "store_id": "store_graz_jakomini",
+      "name_contains": "Jakomini"
+    }
+  ]
+}
