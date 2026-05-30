@@ -228,9 +228,15 @@ def run_llm_fallback(ctx: LlmFallbackContext) -> None:
             result = ctx.call_runtime(job.function)
             txt = ctx.format_result(job.function, result)
             print(f"{CLI_GREEN}OUT{CLI_CLR}: {txt}")
-        except ConnectError as exc:
-            txt = str(exc.message)
-            print(f"{CLI_RED}ERR {exc.code}: {exc.message}{CLI_CLR}")
+        except (ConnectError, OSError) as exc:
+            if isinstance(exc, ConnectError):
+                txt = str(exc.message)
+                print(f"{CLI_RED}ERR {exc.code}: {exc.message}{CLI_CLR}")
+            else:
+                txt = str(exc)
+                print(f"{CLI_RED}ERR: {txt}{CLI_CLR}")
+            ctx.log.append({"role": "tool", "content": txt, "tool_call_id": step})
+            continue
 
         if isinstance(job.function, ctx.req_inventory_count):
             ctx.guard_state.inventory_final_refs = inventory_refs_from_output(txt)

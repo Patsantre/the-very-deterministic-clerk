@@ -271,14 +271,14 @@ def catalogue_count_report(vm, cmd) -> str:
 
     exclude_clause = ""
     if cmd.exclude_family_ids:
-        exclude_clause = f" and family_id not in ({sql_in(cmd.exclude_family_ids)})"
+        exclude_clause = f" and product_family_id not in ({sql_in(cmd.exclude_family_ids)})"
 
     if not cmd.city:
         count_result = exec_sql(
             vm,
             "select count(*) as count from product_variants "
             f"where product_kind_id = {sql_literal(kind_id)}"
-            f"{exclude_clause.replace('family_id', 'product_family_id')};",
+            f"{exclude_clause};",
         )
         count_rows = csv_rows(count_result.stdout)
         count = int(count_rows[0]["count"]) if count_rows and count_rows[0].get("count") else 0
@@ -287,7 +287,7 @@ def catalogue_count_report(vm, cmd) -> str:
             "select product_sku as sku, record_path as path, product_name as name "
             "from product_variants "
             f"where product_kind_id = {sql_literal(kind_id)}"
-            f"{exclude_clause.replace('family_id', 'product_family_id')} "
+            f"{exclude_clause} "
             "order by product_sku limit 50;",
         )
         refs = [cmd.doc_path]

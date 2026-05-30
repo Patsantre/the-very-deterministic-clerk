@@ -67,6 +67,39 @@ class SqlHelperTest(unittest.TestCase):
         self.assertEqual(result.stdout, "id,path\n")
         self.assertEqual(vm.calls, [[], ["--tmpdir", "/work/tmp"]])
 
+    def test_catalogue_count_report_exclude_literal_is_not_rewritten(self):
+        class FakeVm:
+            def __init__(self):
+                self.sql = []
+
+            def exec(self, request):
+                sql = request.stdin
+                self.sql.append(sql)
+                if "count(*) as count" in sql:
+                    return SimpleNamespace(stdout="count\n0\n", stderr="")
+                if "select product_sku as sku" in sql:
+                    return SimpleNamespace(stdout="sku,path,name\n", stderr="")
+                raise AssertionError(f"unexpected SQL: {sql}")
+
+        vm = FakeVm()
+        result = catalogue_count_report(
+            vm,
+            SimpleNamespace(
+                kind_id="wiper_blades",
+                kind_name="",
+                city="",
+                doc_path="/docs/count-policy.md",
+                threshold=1,
+                exclude_family_ids=["fam_family_id_x"],
+            ),
+        )
+
+        self.assertIn("count=0", result)
+        self.assertTrue(vm.sql)
+        for sql in vm.sql:
+            self.assertIn("product_family_id not in ('fam_family_id_x')", sql)
+            self.assertNotIn("fam_product_family_id_x", sql)
+
 
 class OutputParserTest(unittest.TestCase):
     def test_catalogue_output_helpers(self):
