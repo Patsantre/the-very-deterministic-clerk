@@ -43,8 +43,10 @@ ECOM_DEV_TASK_ORDER = (
     "t41", "t42", "t43", "t44", "t45", "t46", "t47", "t48", "t49", "t50",
     "t51", "t52", "t53",
 )
+ECOM_PROD_TASK_ORDER = tuple(f"t{index:02d}" for index in range(1, 101))
 DEFAULT_TASK_ORDERS = {
     "bitgn/ecom1-dev": ECOM_DEV_TASK_ORDER,
+    "bitgn/ecom1-prod": ECOM_PROD_TASK_ORDER,
 }
 
 CLI_RED = "\x1B[31m"

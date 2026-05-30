@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-from main import ECOM_DEV_TASK_ORDER, filtered_trial_ids
+from main import ECOM_DEV_TASK_ORDER, ECOM_PROD_TASK_ORDER, filtered_trial_ids
 
 
 class MainRunnerFilterTest(unittest.TestCase):
@@ -40,6 +40,19 @@ class MainRunnerFilterTest(unittest.TestCase):
         self.assertEqual(filtered, ["trial_t44", "trial_t45", "trial_t46", "trial_t48"])
         self.assertEqual(source, "built-in task order")
         self.assertEqual(ECOM_DEV_TASK_ORDER[-1], "t53")
+
+    def test_ecom_prod_fallback_uses_100_task_order(self):
+        trial_ids = [f"trial_{task_id}" for task_id in ECOM_PROD_TASK_ORDER]
+
+        filtered, source = filtered_trial_ids(
+            ["t01", "t53", "t100"],
+            trial_ids,
+            bench_id="bitgn/ecom1-prod",
+        )
+
+        self.assertEqual(filtered, ["trial_t01", "trial_t53", "trial_t100"])
+        self.assertEqual(source, "built-in task order")
+        self.assertEqual(ECOM_PROD_TASK_ORDER[-1], "t100")
 
     def test_unknown_benchmark_falls_back_to_scan(self):
         trial_ids, source = filtered_trial_ids(
