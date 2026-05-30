@@ -55,6 +55,7 @@ class LlmFallbackContext:
     normalize_store_lookup: Callable[[Any, str], Any]
     count_policy_request_from_doc: Callable[[str, str, str], Any | None]
     format_result: Callable[[Any, Any], str]
+    policy_refs: Callable[..., list[str]] | None = None
     guard_state: GuardState = field(default_factory=GuardState)
 
 
@@ -74,7 +75,7 @@ def _auto_finish_exact_count(
     count: int,
     refs: list[str],
 ) -> bool:
-    final_refs = _count_report_refs(ctx.task_text, refs)
+    final_refs = _count_report_refs(ctx, refs)
     completion = ctx.report_completion(
         tool="report_completion",
         completed_steps_laconic=completed_steps,
@@ -96,20 +97,43 @@ def _wants_exact_count_answer(task_text: str) -> bool:
     )
 
 
-def _count_report_refs(task_text: str, refs: list[str]) -> list[str]:
+def _count_report_refs(ctx: LlmFallbackContext, refs: list[str]) -> list[str]:
     final = list(refs)
-    lowered = task_text.lower()
+    lowered = ctx.task_text.lower()
     if (
-        ("stale" in lowered or "db only" in lowered or "rely on db" in lowered)
+        (
+            "stale" in lowered
+            or "db only" in lowered
+            or "rely on db" in lowered
+            or "database projection" in lowered
+            or "use database" in lowered
+            or "count via files" in lowered
+        )
         and "/docs/urgent-sql-incident.md" not in final
     ):
-        final.append("/docs/urgent-sql-incident.md")
+        final.extend(
+            _policy_ref_candidates(ctx, "sql.incident", "/docs/urgent-sql-incident.md")
+        )
     if (
         ("codex" in lowered or "trust sql" in lowered or "sql" in lowered)
         and "/bin/sql-readme-2024-07-17.md" not in final
     ):
-        final.append("/bin/sql-readme-2024-07-17.md")
-    return final
+        final.extend(
+            _policy_ref_candidates(ctx, "sql.incident", "/bin/sql-readme-2024-07-17.md")
+        )
+    return list(dict.fromkeys(ref for ref in final if ref))
+
+
+def _policy_ref_candidates(
+    ctx: LlmFallbackContext,
+    semantic_key: str,
+    fallback: str,
+) -> list[str]:
+    if ctx.policy_refs is not None:
+        refs = ctx.policy_refs(semantic_key)
+        if refs:
+            return refs
+    return [fallback]
 
 
 def run_llm_fallback(ctx: LlmFallbackContext) -> None:

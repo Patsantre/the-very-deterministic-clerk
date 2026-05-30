@@ -44,6 +44,11 @@ from ecom_parsers import (
     payment_id_from_task as _payment_id_from_task,
     store_name_alias,
 )
+from ecom_policy_index import (
+    PolicyIndex,
+    build_policy_index_from_documents,
+    candidate_policy_paths_from_tree,
+)
 from ecom_solvers.checkout import CheckoutSolverKit, auto_checkout_task
 from ecom_solvers.discounts import DiscountSolverKit, auto_discount_task
 from ecom_solvers.payments_3ds import ThreeDsSolverKit, auto_3ds_recovery_task
@@ -54,7 +59,10 @@ from ecom_solvers.security import (
     auto_archived_fraud_report_task,
     run_pre_mutation_security_solvers,
 )
-from ecom_task_classifier import classify_task
+from ecom_task_classifier import classify_task, fallback_classify_task
+
+
+_ACTIVE_POLICY_INDEX = PolicyIndex.empty()
 
 
 class ReportTaskCompletion(BaseModel):
@@ -541,11 +549,64 @@ def _basket_is_checkoutable(line_rows: list[dict[str, str]]) -> bool:
 
 
 def _security_refs(*refs: str) -> list[str]:
-    final = ["/docs/security.md"]
-    for ref in refs:
-        if ref and ref.startswith("/") and ref not in final:
-            final.append(ref)
-    return final
+    return _ACTIVE_POLICY_INDEX.security_refs(*refs)
+
+
+def _policy_refs(*refs: str) -> list[str]:
+    return _ACTIVE_POLICY_INDEX.refs(*refs)
+
+
+def _read_content(result) -> str:
+    content = getattr(result, "content", "")
+    return content if isinstance(content, str) else str(content)
+
+
+def _read_sha256(result) -> str:
+    for attr in ("sha256", "sha", "digest"):
+        value = getattr(result, attr, "")
+        if value:
+            return str(value)
+    return ""
+
+
+def _discover_policy_index(harness_url: str) -> PolicyIndex:
+    docs: list[tuple[str, str, str | None]] = []
+
+    def try_call(cmd: BaseModel):
+        # Policy discovery is best-effort. Avoid the normal retry wrapper here:
+        # old dev images use /AGENTS.MD, so probing /AGENTS.md must not add a
+        # retry delay to every task process.
+        return dispatch(EcomRuntimeClientSync(harness_url, timeout_ms=RUNTIME_RPC_TIMEOUT_MS), cmd)
+
+    def try_read(path: str) -> bool:
+        try:
+            result = try_call(Req_Read(tool="read", path=path))
+        except Exception:
+            return False
+        docs.append((path, _read_content(result), _read_sha256(result)))
+        return True
+
+    # The platform contract says agents should start from /AGENTS.md. Keep the
+    # uppercase variant only as a compatibility fallback for older dev images.
+    for agents_path in ("/AGENTS.md", "/AGENTS.MD"):
+        if try_read(agents_path):
+            break
+
+    policy_paths: list[str] = []
+    try:
+        tree_result = try_call(Req_Tree(tool="tree", root="/docs", level=2))
+        tree_root = getattr(tree_result, "root", tree_result)
+        policy_paths.extend(candidate_policy_paths_from_tree(tree_root, "/docs"))
+    except Exception:
+        pass
+    policy_paths.append("/bin/sql-readme-2024-07-17.md")
+
+    seen = {path for path, _, _ in docs}
+    for path in policy_paths:
+        if path not in seen and try_read(path):
+            seen.add(path)
+
+    return build_policy_index_from_documents(docs)
 
 
 def _normalize_store_lookup(cmd: Req_StoreLookup, task_text: str) -> Req_StoreLookup:
@@ -702,6 +763,7 @@ def _read_only_solver_kit() -> ReadOnlySolverKit:
         format_result=_format_result,
         auto_sql=_auto_sql,
         auto_finish=_auto_finish,
+        policy_refs=_policy_refs,
     )
 
 
@@ -727,6 +789,7 @@ def _refund_solver_kit() -> RefundSolverKit:
         auto_finish=_auto_finish,
         sql_literal=_sql_literal,
         security_refs=_security_refs,
+        policy_refs=_policy_refs,
     )
 
 
@@ -787,6 +850,7 @@ def _bootstrap_kit() -> BootstrapKit:
     return BootstrapKit(
         req_tree=Req_Tree,
         req_exec=Req_Exec,
+        req_read=Req_Read,
         format_result=_format_result,
     )
 
@@ -808,6 +872,7 @@ def _llm_fallback_context(client, model: str, task_text: str, log: list[dict], c
         normalize_store_lookup=_normalize_store_lookup,
         count_policy_request_from_doc=_count_policy_request_from_doc,
         format_result=_format_result,
+        policy_refs=_policy_refs,
     )
 
 
@@ -844,10 +909,14 @@ def run_agent(model: str, harness_url: str, task_text: str) -> None:
         "true",
         "yes",
     }
+    global _ACTIVE_POLICY_INDEX
+    _ACTIVE_POLICY_INDEX = _discover_policy_index(harness_url)
+
     if deterministic_disabled:
         print(f"{CLI_YELLOW}AUTO solvers disabled; using LLM fallback only{CLI_CLR}", flush=True)
     else:
         task_spec = classify_task(task_text, client)
+        fallback_task_spec = fallback_classify_task(task_text)
         security_kit = _security_solver_kit()
         if run_pre_mutation_security_solvers(call_runtime, task_text, security_kit):
             return
@@ -864,7 +933,14 @@ def run_agent(model: str, harness_url: str, task_text: str) -> None:
         if auto_discount_task(call_runtime, task_text, _discount_solver_kit(), task_spec):
             return
 
-        if auto_checkout_task(call_runtime, task_text, _checkout_solver_kit(), task_spec):
+        checkout_kit = _checkout_solver_kit()
+        if auto_checkout_task(call_runtime, task_text, checkout_kit, task_spec):
+            return
+        if (
+            task_spec.task_class != "checkout"
+            and fallback_task_spec.task_class == "checkout"
+            and auto_checkout_task(call_runtime, task_text, checkout_kit, fallback_task_spec)
+        ):
             return
 
         if run_read_only_solvers(call_runtime, task_text, _read_only_solver_kit(), task_spec):

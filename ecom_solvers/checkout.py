@@ -51,27 +51,6 @@ def auto_checkout_task(
     if wants_latest_open and not explicit_basket_id:
         basket_id = ""
 
-    if "queue-save" in lowered or "quick complete" in lowered:
-        basket = kit.basket_row(call_runtime, basket_id) if basket_id else None
-        refs = kit.security_refs(
-            "/docs/checkout.md",
-            "/docs/store-associate-exception-handbook.md",
-            basket.get("path", "") if basket else "",
-        )
-        return kit.auto_finish(
-            call_runtime,
-            kit.report_completion(
-                tool="report_completion",
-                completed_steps_laconic=[
-                    "checked store-desk exception wording",
-                    "did not treat queue language as checkout authorization",
-                ],
-                message="The store-desk note is not a supported checkout exception; normal checkout and inventory checks still apply.",
-                grounding_refs=refs,
-                outcome="OUTCOME_NONE_UNSUPPORTED",
-            ),
-        )
-
     if not basket_id:
         if "my basket" not in lowered and not wants_latest_open:
             return False

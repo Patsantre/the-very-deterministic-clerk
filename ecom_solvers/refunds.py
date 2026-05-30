@@ -18,6 +18,7 @@ class RefundSolverKit:
     auto_finish: Callable[[Callable[[object], object], object], bool]
     sql_literal: Callable[[str], str]
     security_refs: Callable[..., list[str]]
+    policy_refs: Callable[..., list[str]] | None = None
 
 
 def _return_id_from_task(task_text: str) -> str:
@@ -37,6 +38,12 @@ def _amount_cents_from_task(task_text: str) -> int | None:
 
 def _clean_refs(refs: list[str]) -> list[str]:
     return [ref for ref in refs if ref]
+
+
+def _policy_refs(kit: RefundSolverKit, *refs: str) -> list[str]:
+    if kit.policy_refs is not None:
+        return kit.policy_refs(*refs)
+    return _clean_refs(list(refs))
 
 
 def auto_refund_task(
@@ -71,7 +78,7 @@ limit 1;
                     tool="report_completion",
                     completed_steps_laconic=["looked up requested payment"],
                     message=f"Refund is not supported because payment {payment_id} was not found.",
-                    grounding_refs=["/docs/returns.md"],
+                    grounding_refs=_policy_refs(kit, "/docs/returns.md"),
                     outcome="OUTCOME_NONE_UNSUPPORTED",
                 ),
             )
@@ -162,7 +169,7 @@ limit 1;
                 tool="report_completion",
                 completed_steps_laconic=["looked up requested payment refund target"],
                 message=f"Refund approval for payment {payment_id} is not supported by this request.",
-                grounding_refs=_clean_refs(refs),
+                grounding_refs=_policy_refs(kit, *refs),
                 outcome="OUTCOME_NONE_UNSUPPORTED",
             ),
         )
@@ -187,7 +194,7 @@ limit 1;
                     tool="report_completion",
                     completed_steps_laconic=["looked up requested return"],
                     message=f"Refund is not supported because return {return_id} was not found.",
-                    grounding_refs=["/docs/returns.md"],
+                    grounding_refs=_policy_refs(kit, "/docs/returns.md"),
                     outcome="OUTCOME_NONE_UNSUPPORTED",
                 ),
             )
@@ -241,12 +248,11 @@ limit 1;
                 tool="report_completion",
                 completed_steps_laconic=["looked up requested return refund target"],
                 message=f"Refund approval for return {return_id} is not supported by this request.",
-                grounding_refs=_clean_refs(
-                    [
-                        "/docs/returns.md",
-                        rows[0].get("path", ""),
-                        rows[0].get("payment_path", ""),
-                    ]
+                grounding_refs=_policy_refs(
+                    kit,
+                    "/docs/returns.md",
+                    rows[0].get("path", ""),
+                    rows[0].get("payment_path", ""),
                 ),
                 outcome="OUTCOME_NONE_UNSUPPORTED",
             ),
@@ -300,7 +306,7 @@ limit 5;
                         "finalized customer refund",
                     ],
                     message=f"Refund finalized for return {row['return_id']}.",
-                    grounding_refs=_clean_refs(["/docs/security.md", *refs]),
+                    grounding_refs=kit.security_refs(*refs),
                     outcome="OUTCOME_OK",
                 ),
             )
@@ -325,7 +331,7 @@ limit 5;
                 tool="report_completion",
                 completed_steps_laconic=["looked up refund request by customer and amount"],
                 message="Refund is not supported without an approved return workflow.",
-                grounding_refs=_clean_refs(refs),
+                grounding_refs=_policy_refs(kit, *refs),
                 outcome="OUTCOME_NONE_UNSUPPORTED",
             ),
         )
@@ -336,7 +342,7 @@ limit 5;
             tool="report_completion",
             completed_steps_laconic=["checked refund request target"],
             message="Refund is not supported without an existing payment or return record to act on.",
-            grounding_refs=["/docs/returns.md"],
+            grounding_refs=_policy_refs(kit, "/docs/returns.md"),
             outcome="OUTCOME_NONE_UNSUPPORTED",
         ),
     )

@@ -4,7 +4,7 @@ A hybrid **deterministic-solver + LLM-fallback** agent for [BitGN's ECOM1 benchm
 
 The premise is in the name: most "e-commerce ops assistant" tasks in this benchmark are not creative work. They are policy checks, catalogue lookups, SQL questions, and side-effect mutations (checkout, discount, refund, 3DS recovery) with strict preconditions. A clerk does them by following a checklist, not by reasoning from scratch. So this agent works that way too — a deterministic, code-driven clerk in front, with an LLM only as a fallback when no checklist matches.
 
-**Latest dev sweep on `bitgn/ecom1-dev`: 99.49%** (50 tasks, two non-perfect at `t40 = 0.95` and `t48 = 0.79`). Live ranking benchmark scheduled to open 2026-05-30.
+**Latest dev sweep on `bitgn/ecom1-dev`: 99.62%** (53 tasks, two non-perfect at `t40 = 0.95` and `t48 = 0.85`). Live ranking benchmark scheduled to open 2026-05-30.
 
 ---
 
@@ -127,8 +127,8 @@ ecom_solvers/
                           state/attempt-limit preflight.
   read_only.py            Catalogue yes/no, support-note checks,
                           availability counts, quote TSV product-list
-                          checks, catalogue count reports, city
-                          quantity sums.
+                          checks, receipt OCR price checks, catalogue
+                          count reports, city quantity sums.
 
 ecom_domain_tools.py      SQL-backed domain tools (catalogue_lookup,
                           store_lookup, catalogue_count_report,
@@ -142,6 +142,8 @@ ecom_llm_loop.py          LLM fallback loop, guard dispatch, runtime
                           exec, exact-count auto-finalization.
 ecom_guards.py            Repeated-read / bad-SQL / inventory-ref /
                           exact-format / catalogue-count guards.
+ecom_policy_index.py      Small policy-doc index for SHA/path-aware
+                          runtime document lookup.
 
 config/
   property_aliases.json   Natural-language label → product_properties
@@ -195,7 +197,7 @@ Useful overrides:
 | `RUNTIME_RPC_ATTEMPTS` | `3` | VM runtime retries on Connect errors |
 | `ECOM_DISABLE_DETERMINISTIC_SOLVERS` | `0` | Force LLM fallback only (diagnostic) |
 
-Recommended config for live runs (matches what produced the 99.49% dev sweep):
+Recommended config for live runs (matches what produced the 99.62% dev sweep):
 
 ```bash
 MODEL_TIMEOUT_S=75 HARNESS_RPC_TIMEOUT_MS=60000 \

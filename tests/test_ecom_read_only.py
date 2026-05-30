@@ -742,6 +742,73 @@ class CatalogueCountSolverTest(unittest.TestCase):
         self.assertEqual(calls["finish"][0].message, "<ANSWR: 4>")
         self.assertIn("/docs/urgent-sql-incident.md", calls["finish"][0].grounding_refs)
 
+    def test_database_projection_count_report_adds_sql_incident_ref(self):
+        calls = {"finish": [], "search": [], "read": [], "report": []}
+
+        def format_result(cmd, result):
+            return getattr(result, "text", getattr(result, "content", ""))
+
+        def count_policy_request_from_doc(task_text, path, content):
+            self.assertEqual(path, "/docs/catalogue-count-wiper-blades.md")
+            return Request(tool="catalogue_count_report", kind_id="wiper_blades", doc_path=path)
+
+        def auto_finish(_call_runtime, completion):
+            calls["finish"].append(completion)
+            return True
+
+        kit = ReadOnlySolverKit(
+            req_exec=Request,
+            req_read=Request,
+            req_search=Request,
+            req_catalogue_lookup=Request,
+            req_inventory_count=Request,
+            report_completion=Completion,
+            parse_constraints=lambda text: [],
+            parse_availability_task=lambda task_text: None,
+            count_policy_request_from_doc=count_policy_request_from_doc,
+            format_result=format_result,
+            auto_sql=lambda call_runtime, sql: ([], ""),
+            auto_finish=auto_finish,
+        )
+
+        def call_runtime(cmd):
+            if getattr(cmd, "tool", "") == "search":
+                calls["search"].append(cmd)
+                if cmd.pattern == "Requested product kind: Wiper Blade":
+                    return SimpleNamespace(matches=[SimpleNamespace(path="/docs/catalogue-count-wiper-blades.md")])
+                if cmd.pattern == "sql":
+                    return SimpleNamespace(matches=[SimpleNamespace(path="/docs/urgent-sql-incident.md")])
+                return SimpleNamespace(matches=[])
+            if getattr(cmd, "tool", "") == "read":
+                calls["read"].append(cmd)
+                return SimpleNamespace(content="Requested product_kind_id: wiper_blades")
+            if getattr(cmd, "tool", "") == "catalogue_count_report":
+                calls["report"].append(cmd)
+                return SimpleNamespace(
+                    text="\n".join(
+                        [
+                            "catalogue_count_report",
+                            "count=8",
+                            "final_refs:",
+                            "- /docs/catalogue-count-wiper-blades.md",
+                        ]
+                    )
+                )
+            raise AssertionError(f"unexpected runtime call: {cmd!r}")
+
+        handled = auto_catalogue_count_task(
+            call_runtime,
+            (
+                "How many products are Wiper Blade in catalogue? "
+                "Answer format: `<total:%VALUE%>`. don't count via files, use database projection"
+            ),
+            kit,
+        )
+
+        self.assertTrue(handled)
+        self.assertEqual(calls["finish"][0].message, "<total:8>")
+        self.assertIn("/docs/urgent-sql-incident.md", calls["finish"][0].grounding_refs)
+
 
 class QuoteProductListSolverTest(unittest.TestCase):
     def test_quote_product_list_returns_tsv_with_per_row_stock(self):

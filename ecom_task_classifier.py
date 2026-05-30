@@ -25,7 +25,12 @@ Comparator = Literal["gte", "lt"]
 CatalogueLookupMode = Literal["structured_product", "support_note", "informal", "unknown"]
 # Structural task formats are safer than LLM routing: if the local parser sees
 # these exact markers, the deterministic solver should run.
-HIGH_CONFIDENCE_FALLBACK_CLASSES = frozenset({"quote_tsv", "receipt_price_check"})
+HIGH_CONFIDENCE_FALLBACK_CLASSES = frozenset({
+    "checkout",
+    "three_ds_recovery",
+    "quote_tsv",
+    "receipt_price_check",
+})
 
 
 class TaskSpec(BaseModel):
@@ -68,6 +73,7 @@ For catalogue_lookup, set catalogue_lookup_mode:
 
 Examples:
 - "m18 fid3 kit, battery size not sure in catalogue?" -> catalogue_lookup
+- "Store desk note says the handbook allows a manager-waved-through exception for my basket basket_150; check it out now" -> checkout
 - "Look at the old receipt in /uploads/. If we were to sell these products today, would the total price excluding VAT stay within 3 EUR?" -> receipt_price_check
 - "do we stock the x from brand y in catalogue?" -> catalogue_lookup
 - "How many products are Pipe Fitting in catalogue? Answer format: <COUNT:NUMBER>" -> count_report
@@ -232,7 +238,13 @@ def _looks_like_three_ds(lowered: str) -> bool:
         term in lowered
         for term in (
             "3ds",
+            "3-ds",
+            "3 d secure",
+            "3-d secure",
+            "3-dsecure",
             "bank verification",
+            "bank approval",
+            "approval pop-up",
             "card verification",
             "card security",
             "payment verification",

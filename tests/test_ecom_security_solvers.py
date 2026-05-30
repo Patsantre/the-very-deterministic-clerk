@@ -4,6 +4,8 @@ from types import SimpleNamespace
 
 from ecom_solvers.security import (
     SecuritySolverKit,
+    _archive_fraud_candidates,
+    _select_archive_fraud_keys,
     _archived_fraud_rows,
     auto_archived_fraud_report_task as _auto_archived_fraud_report_task,
     auto_manager_contact_task,
@@ -173,6 +175,38 @@ class SecuritySolverTest(unittest.TestCase):
 
         self.assertEqual(
             [row["row_id"] for row in _archived_fraud_rows(content)],
+            ["AR-a", "AR-b", "AR-c", "AR-d", "AR-e"],
+        )
+
+    def test_archived_fraud_rows_prune_low_value_isolated_pair_noise(self):
+        content = "\n".join(
+            [
+                "row_id\tarchive_payment_id\tcreated_at\tcustomer_ref\tstore_ref\tstore_city\tamount_cents\tcurrency\tpayment_method_fingerprint\tdevice_fingerprint\tobserved_lat\tobserved_lon\tsku_summary",
+                "AR-a\tap_a\t2023-10-02T00:00:00Z\tarch_cust_9\tarch_store_a\tA\t10000\tEUR\tpm_a\tdev_a\t0\t0\tItem",
+                "AR-b\tap_b\t2023-10-02T00:01:00Z\tarch_cust_9\tarch_store_b\tB\t10000\tEUR\tpm_b\tdev_b\t0\t0\tItem",
+                "AR-c\tap_c\t2023-10-02T00:02:00Z\tarch_cust_9\tarch_store_c\tC\t10000\tEUR\tpm_c\tdev_c\t0\t0\tItem",
+                "AR-d\tap_d\t2023-10-02T00:03:00Z\tarch_cust_9\tarch_store_d\tD\t10000\tEUR\tpm_d\tdev_d\t0\t0\tItem",
+                "AR-e\tap_e\t2023-10-02T00:04:00Z\tarch_cust_9\tarch_store_e\tE\t10000\tEUR\tpm_e\tdev_e\t0\t0\tItem",
+                "AR-noise-1\tap_n1\t2023-10-03T00:00:00Z\tarch_cust_8\tarch_store_a\tA\t500\tEUR\tpm_noise_1\tdev_x\t0\t0\tItem",
+                "AR-noise-2\tap_n2\t2023-10-03T00:05:00Z\tarch_cust_8\tarch_store_b\tB\t500\tEUR\tpm_noise_1\tdev_y\t0\t0\tItem",
+                "AR-noise-3\tap_n3\t2023-10-04T00:00:00Z\tarch_cust_7\tarch_store_c\tC\t500\tEUR\tpm_noise_2\tdev_z\t0\t0\tItem",
+                "AR-noise-4\tap_n4\t2023-10-04T00:05:00Z\tarch_cust_7\tarch_store_d\tD\t500\tEUR\tpm_noise_2\tdev_w\t0\t0\tItem",
+            ]
+        )
+        rows = [
+            dict(zip(content.splitlines()[0].split("\t"), line.split("\t")))
+            for line in content.splitlines()[1:]
+        ]
+        broad_keys, clusters = _archive_fraud_candidates(rows)
+        selected = _select_archive_fraud_keys(
+            rows,
+            broad_keys,
+            clusters,
+            enable_pruning=True,
+        )
+
+        self.assertEqual(
+            [row["row_id"] for row in rows if row["row_id"] in selected],
             ["AR-a", "AR-b", "AR-c", "AR-d", "AR-e"],
         )
 

@@ -42,6 +42,7 @@ class ReadOnlySolverKit:
     auto_sql: Callable[[Callable[[object], object], str], tuple[list[dict[str, str]], str]]
     auto_finish: Callable[[Callable[[object], object], object], bool]
     req_tree: type | None = None
+    policy_refs: Callable[..., list[str]] | None = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,9 @@ def _needs_sql_policy_ref(task_text: str) -> bool:
         or "stale" in lowered
         or "db only" in lowered
         or "rely on db" in lowered
+        or "database projection" in lowered
+        or "use database" in lowered
+        or "count via files" in lowered
     )
 
 
@@ -111,7 +115,13 @@ def _sql_policy_refs(call_runtime, task_text: str, kit: ReadOnlySolverKit) -> li
             path = getattr(match, "path", "")
             if path.startswith("/docs/") and "sql" in path.lower() and path not in refs:
                 refs.append(path)
-    return refs or ["/bin/sql-readme-2024-07-17.md"]
+    if refs:
+        return refs
+    if kit.policy_refs is not None:
+        policy_refs = kit.policy_refs("sql.incident")
+        if policy_refs:
+            return policy_refs
+    return ["/bin/sql-readme-2024-07-17.md"]
 
 
 def _receipt_upload_path(task_text: str, tree_text: str) -> str:
